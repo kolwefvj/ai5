@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Chat Quiz — Oʻrta Daraja (AI)</title>
+<style>
+:root{
+  --bg:#071022; --card:#08122a; --accent:#7c3aed; --accent2:#06b6d4;
+  --ai-bg: linear-gradient(180deg,#0f1724,#071022);
+  --you-bg: linear-gradient(180deg,#044e54,#065f46);
+  --maxw:420px;
+}
+*{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Arial}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,#020617,#04102a);color:#e6f0ff}
+.app{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:12px 10px 20px;gap:12px}
+.header{width:100%;max-width:var(--maxw);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.brand{display:flex;gap:10px;align-items:center}
+.logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;color:#021}
+h1{font-size:16px;margin:0}
+.controls{display:flex;gap:8px}
+.btn{background:linear-gradient(180deg,var(--accent),var(--accent2));border:none;padding:8px 12px;border-radius:10px;color:#021;font-weight:800;cursor:pointer}
+.btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:inherit;padding:7px 10px}
+
+/* Chat card */
+.card{width:100%;max-width:var(--maxw);background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:14px;padding:10px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 20px 50px rgba(2,6,23,0.6);display:flex;flex-direction:column}
+.chat{height:64vh;min-height:380px;max-height:760px;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:78%;padding:10px 12px;border-radius:14px;line-height:1.3;box-shadow:0 8px 20px rgba(0,0,0,0.6);opacity:0;transform:translateY(6px);animation:pop .14s forwards}
+@keyframes pop{to{opacity:1;transform:none}}
+.ai{align-self:flex-start;background:var(--ai-bg);border:1px solid rgba(255,255,255,0.02);color:#dbeafe}
+.you{align-self:flex-end;background:var(--you-bg);border:1px solid rgba(255,255,255,0.04);color:#eafffb}
+
+/* meta small */
+.meta{font-size:12px;opacity:0.78;margin-top:6px}
+
+/* input area */
+.input-wrap{display:flex;gap:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.02);align-items:center}
+.input{flex:1;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;font-size:15px}
+.send{padding:10px 12px;border-radius:10px;border:none;background:var(--accent2);color:white;font-weight:800;cursor:pointer}
+.badges{display:flex;gap:8px;justify-content:center;padding-top:8px}
+.badge{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:10px;font-weight:700;font-size:13px}
+
+/* result overlay */
+.overlay{position:absolute;inset:0;background:rgba(2,6,12,0.6);display:flex;align-items:center;justify-content:center;z-index:60}
+.panel{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#021;padding:18px;border-radius:14px;text-align:center;min-width:260px}
+
+/* responsive */
+@media(max-width:420px){
+  .chat{height:68vh;min-height:420px}
+  .msg{max-width:86%}
+  .logo{width:40px;height:40px}
+}
+.small{font-size:13px;opacity:0.9}
+.note{font-size:13px;opacity:0.8;text-align:center;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="brand">
+      <div class="logo">QZ</div>
+      <div>
+        <h1>Chat Quiz — Oʻrta daraja</h1>
+        <div class="small">10 savol · 3 urinish · +10 ball</div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn" id="startBtn">Yangi raund</button>
+      <button class="btn ghost" id="helpBtn">Qoidalar</button>
+    </div>
+  </div>
+
+  <div class="card" id="card">
+    <div id="chat" class="chat" aria-live="polite"></div>
+
+    <div class="input-wrap">
+      <input id="input" class="input" type="text" placeholder="Javobingizni yozing..." disabled />
+      <button id="sendBtn" class="send" disabled>Yuborish</button>
+    </div>
+
+    <div class="badges" style="margin-top:8px">
+      <div class="badge" id="qBadge">Savol: 0/10</div>
+      <div class="badge" id="attemptBadge">Urinish: 0</div>
+      <div class="badge" id="scoreBadge">Ball: 0</div>
+    </div>
+    <div class="note">Enter yoki "Yuborish" bilan javob yuboring.</div>
+  </div>
+</div>
+
+<!-- result template -->
+<div id="overlay" class="overlay" style="display:none">
+  <div class="panel" id="resultPanel">
+    <h2 id="resultTitle">Natija</h2>
+    <p id="resultText" style="margin:8px 0 12px 0;font-weight:800"></p>
+    <div style="display:flex;gap:8px;justify-content:center">
+      <button class="btn" id="playAgain">Yana o'ynash</button>
+      <button class="btn ghost" id="closeOverlay">Yopish</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Medium Chat Quiz — single file logic */
+
+/* Question bank (o'rta daraja) — har biri qatorida acceptable answers (lowercase) */
+const BANK = [
+  {q:"Men o'zimni pastga tashlasam ham yuqoriga chiqaman — men nima? (2 so'z mumkin)", a:["parashut","parashut"], hint:"Sky sport bilan bog'liq."},
+  {q:"Hamma bizni eshitadi, lekin juda kam odam gapiradi. Bu nima?", a:["radyo","radio"], hint:"Axborot tarqatadi."},
+  {q:"Har kuni men o'saman, lekin hech qachon kichiklashmayman. Men nima?", a:["yosh","yosh"], hint:"Yil o‘tadi."},
+  {q:"Qayerda tun va kun ham yonma-yon bo'ladi?", a:["xaritada","haritada","xarita"], hint:"Qog'ozda yoki ekran."},
+  {q:"Bir uyni uch chetini ko'rsatadi lekin ichkariga kira olmaydi — bu nima?", a:["xarita","map"], hint:"Yo'lni ko'rsatadi."},
+  {q:"To'liq kapalak bo'lmaydi, lekin uning qanoti bor — bu nima?", a:["kitob","kitob"], hint:"Sahifalar bilan."},
+  {q:"Qanday xo'jalik asbobi elektr bilan ishlaydi, lekin unga kabellar kerak emas?", a:["mikroto'lqin","mikroto'lqinli pech","mikroto'lqin pech"], hint:"Ovqat isitadi."},
+  {q:"4 oyoq, bitta orqa va hech yurmaydi — bu nima?", a:["stol","stul"], hint:"Uy mebeli."},
+  {q:"Men tunda paydo bo'laman, ammo uyquda emasman. Men nima?", a:["oy","oy"], hint:"Osmonda."},
+  {q:"Agar meni kesib olsangiz ham, men yana o'saman — bu nima?", a:["soch","saç","sochlar"], hint:"Insonning bir qismi."},
+  {q:"Qaysi so'z og'ir, lekin bir marta aytiladi va yomg'irni keltiradi? (masalan: bulut?)", a:["bulut","bulut"], hint:"Havo hodisasi."},
+  {q:"Qaysi idish ichida hech narsa suzmaydi (teshiksiz), lekin suvni ushlab turadi?", a:["shisha","bank"], hint:"Suyuqlik saqlaydi."},
+  {q:"Men bir joyda doim o'saman, lekin joyim o'zgarmaydi — men nima?", a:["daraxt","daraxt"], hint:"Tabiat elementi."},
+  {q:"Qani shu... bir daqiqada 60 marta uradi — bu nima?", a:["soat","soat"], hint:"Vaqtni o'lchaydi."},
+  {q:"Uzoqdan men kichik, yaqinlashgan sari katta bo'laman — men nima?", a:["soya","soya","soyа"], hint:"Nur va ob'ekt bilan bog'liq."},
+  {q:"Bir sinonim: 'tez' so'zi antonimi nima?", a:["sekin","asta","sekin"], hint:"Harakat tezligini bildiradi."},
+  {q:"Agar sen ikkiga bo'lsang va yana ikkiga bo'lsang, nechiga bo'lasan? (misolda: 8->4->2)", a:["2","ikki"], hint:"Sodda matematik."},
+  {q:"Ikki odam bir toqqa chiqdi, lekin hech biri pastga tushmadi. Qanday qilib?", a:["tog'ga chiqishdi","ikisi ham ko'maklashdi"], hint:"Matnni boshqa tomondan o'qing."},
+  {q:"Qaysi transport turi yo'lovchini yer ostiga olib boradi lekin o'z yo'lini qoldirmaydi?", a:["metro","metro"], hint:"Shahar ichida ko'p."},
+  {q:"Mening boshim bor, biroq tana yo'q; ismim bor, lekin hayot yo'q — bu nima?", a:["nom","ism","ismi"], hint:"Nimani atash bilan bog'liq."}
+];
+
+/* game state */
+let pool = [];       // shuffled pool for current round
+let curIndex = 0;    // 0..9
+let attempts = 3;
+let score = 0;
+let asked = 0;
+let currentQ = null;
+
+/* DOM */
+const chat = document.getElementById('chat');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('sendBtn');
+const startBtn = document.getElementById('startBtn');
+const helpBtn = document.getElementById('helpBtn');
+const qBadge = document.getElementById('qBadge');
+const attemptBadge = document.getElementById('attemptBadge');
+const scoreBadge = document.getElementById('scoreBadge');
+const overlay = document.getElementById('overlay');
+const resultTitle = document.getElementById('resultTitle');
+const resultText = document.getElementById('resultText');
+const playAgain = document.getElementById('playAgain');
+const closeOverlay = document.getElementById('closeOverlay');
+
+/* helpers */
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } }
+function appendAI(html){ const d=document.createElement('div'); d.className='msg ai'; d.innerHTML=html; chat.appendChild(d); chat.scrollTop = chat.scrollHeight; }
+function appendYou(txt){ const d=document.createElement('div'); d.className='msg you'; d.textContent=txt; chat.appendChild(d); chat.scrollTop = chat.scrollHeight; }
+function normalize(s){ return s.replace(/[ʼ'"\u2018\u2019]/g,'').replace(/\s+/g,' ').trim().toLowerCase(); }
+function acceptAnswer(ansList, guess){
+  const g = normalize(guess);
+  // numeric synonyms mapping Uzbek basic
+  const numMap = {
+    "bir":"1","ikki":"2","uch":"3","to'rt":"4","tort":"4","besh":"5","olti":"6","yetti":"7","sakkiz":"8","to'qqiz":"9","o'n":"10","yuz":"100"
+  };
+  const gNum = numMap[g] || g;
+  for(const a of ansList){
+    const na = normalize(a);
+    const aNum = numMap[na] || na;
+    if(na === g || aNum === gNum) return true;
+    // allow partial match for short nouns (e.g., "soat" vs "soat")
+    if(na === g) return true;
+  }
+  return false;
+}
+
+/* UI updates */
+function updateBadges(){
+  qBadge.textContent = `Savol: ${Math.min(asked+ (asked<10?1:0), 10)}/10`;
+  attemptBadge.textContent = `Urinish: ${attempts}`;
+  scoreBadge.textContent = `Ball: ${score}`;
+}
+
+/* Start a new round */
+function startRound(){
+  // pick 10 distinct random from BANK
+  pool = BANK.slice();
+  shuffle(pool);
+  if(pool.length < 10){
+    // duplicate when insufficient
+    while(pool.length < 10) pool.push(...BANK);
+    shuffle(pool);
+  }
+  pool = pool.slice(0,10).map(o => ({...o, a: o.a.map(x=>String(x))})); // ensure strings
+  curIndex = 0; attempts = 3; score = 0; asked = 0;
+  chat.innerHTML = '';
+  appendAI("<strong>Salom!</strong> Men 10 ta o‘rta darajadagi savol beraman. Har bir savolga 3 urinish. Har to‘g‘ri javob +10 ball. Tayyor bo‘lsangiz boshlaymiz.");
+  setTimeout(()=> askNext(), 900);
+  input.disabled = false; sendBtn.disabled = false; input.focus();
+  updateBadges();
+}
+
+/* ask next question */
+function askNext(){
+  if(curIndex >= 10){
+    finishRound();
+    return;
+  }
+  currentQ = pool[curIndex];
+  attempts = 3;
+  asked = curIndex;
+  appendAI(`<strong>Savol ${curIndex+1}:</strong> ${currentQ.q}`);
+  updateBadges();
+}
+
+/* process answer */
+function submitAnswer(text){
+  if(!currentQ) return;
+  appendYou(text);
+  const ok = acceptAnswer(currentQ.a, text);
+  if(ok){
+    appendAI("<em>To'g'ri! +10 ball.</em>");
+    score += 10;
+    curIndex++;
+    setTimeout(()=> askNext(), 800);
+  } else {
+    attempts--;
+    if(attempts > 0){
+      appendAI(`<em>Noto'g'ri. Qolgan urinishlar: ${attempts}.</em>`);
+      if(currentQ.hint) setTimeout(()=> appendAI(`<small>Yordam: ${currentQ.hint}</small>`), 200);
+      updateBadges();
+    } else {
+      appendAI(`<em>Imkoniyatlar tugadi. To'g'ri javob: <strong>${currentQ.a.join(", ")}</strong></em>`);
+      curIndex++;
+      setTimeout(()=> askNext(), 900);
+    }
+  }
+  updateBadges();
+}
+
+/* finish */
+function finishRound(){
+  input.disabled = true; sendBtn.disabled = true;
+  updateBadges();
+  // show overlay with result
+  resultTitle.textContent = 'Raund tugadi';
+  resultText.textContent = `Sizning natija: ${score} / 100`;
+  overlay.style.display = 'flex';
+}
+
+/* wire events */
+startBtn.addEventListener('click', startRound);
+helpBtn.addEventListener('click', ()=> alert("Qoidalar:\n• 10 ta savol\n• Har bir savolga 3 urinish\n• Har to'g'ri javob +10 ball\n• Savollar o'rta darajada."));
+
+sendBtn.addEventListener('click', ()=>{ const v = input.value.trim(); if(!v) return; submitAnswer(v); input.value=''; input.focus(); });
+input.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); sendBtn.click(); } });
+
+playAgain.addEventListener('click', ()=>{ overlay.style.display='none'; startRound(); });
+closeOverlay.addEventListener('click', ()=>{ overlay.style.display='none'; });
+
+/* initial welcome */
+appendAI("Xush kelibsiz! 'Yangi raund' tugmasini bosing va AI sizga savollar yuboradi.");
+updateBadges();
+
+/* make messages animate (optional tiny delay) */
+const observer = new MutationObserver(()=>{ chat.scrollTop = chat.scrollHeight; });
+observer.observe(chat, {childList:true});
+</script>
+</body>
+</html>
+
+
